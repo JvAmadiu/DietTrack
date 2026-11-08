@@ -1,0 +1,61 @@
+
+name: Build DietTrack APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Preparar aplicativo
+        run: |
+          mkdir -p app/www
+          unzip -q DietTrack_app.zip -d app/www
+          cd app
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/android@7
+          npm install --save-dev @capacitor/cli@7
+
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.diettrack.app",
+            "appName": "DietTrack",
+            "webDir": "www"
+          }
+          EOF
+
+          npx cap add android
+          npx cap sync android
+
+      - name: Compilar APK
+        run: |
+          cd app/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DietTrack-APK
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+          
